@@ -58,6 +58,12 @@ class CameraPublisher(Node):
         self.bridge = CvBridge()
         self.get_logger().info('Initialization complete')
         self.count = 0
+        self.folder_image_1 = 'camera_image_0/'
+        self.folder_image_2 = 'camera_image_1/'
+        self.folder_pc = 'lidar_point_cloud_0/'
+        self.file_1 = open(self.folder_image_1 + 'timestamps.txt', 'w')
+        self.file_2 = open(self.folder_image_2 + 'timestamps.txt', 'w')
+        self.file_3 = open(self.folder_pc + 'timestamps.txt', 'w')
 
     def transformation(self,pc_as_numpy_array):
         t_mat =np.array([
@@ -73,25 +79,28 @@ class CameraPublisher(Node):
         #print('t_point',transformed_point_3d.shape)
         return transformed_point_3d.T
 
-    def callback(self, image_msg,image_msg1 ,osuter_msg):
+    def callback(self, image_msg,image_msg1 ,ouster_msg):
         self.count = self.count + 1
         filename = str(self.count)
-        folder_image_1 = 'camera_image_0/'
-        folder_image_2 = 'camera_image_1/'
-        folder_pc = 'lidar_point_cloud_0/'
+
         self.get_logger().info('New message arrived')
+        
+            # Write some content to the file
+        self.file_1.write(f"{self.count} , {image_msg.header.stamp.sec}.{image_msg.header.stamp.nanosec} \n")
+        self.file_2.write(f"{self.count} , {image_msg1.header.stamp.sec}.{image_msg1.header.stamp.nanosec} \n")
+        self.file_3.write(f"{self.count} , {ouster_msg.header.stamp.sec}.{ouster_msg.header.stamp.nanosec} \n")
         # Convert ROS Image messages to OpenCV images
-        print('camera 1',image_msg.header.stamp.nanosec)
-        print('camera 2',image_msg1.header.stamp.nanosec)
-        print('lidar',osuter_msg.header.stamp.nanosec)
-        #self.lidar_msg = osuter_msg
+        print('camera 1',image_msg.header.stamp.sec,',',image_msg.header.stamp.nanosec)
+        print('camera 2',image_msg1.header.stamp.sec,image_msg1.header.stamp.nanosec)
+        print('lidar',ouster_msg.header.stamp.sec,ouster_msg.header.stamp.nanosec)
+        #self.lidar_msg = ouster_msg
         #self.publisher_lidar.publish(self.lidar_msg)
         cv_image = self.bridge.imgmsg_to_cv2(image_msg, desired_encoding='bgr8')
         cv_image1 = self.bridge.imgmsg_to_cv2(image_msg1, desired_encoding='bgr8')
         undistorted_image_left = cv2.undistort(cv_image, self.matrix_coefficients_left,self.distortion_coefficients_left)
         undistorted_image_right = cv2.undistort(cv_image1, self.matrix_coefficients_right,self.distortion_coefficients_right)
-        cv2.imwrite(folder_image_1 + filename + '.jpg', undistorted_image_left)
-        cv2.imwrite(folder_image_2 + filename +'.jpg', undistorted_image_right)
+        #cv2.imwrite(folder_image_1 + filename + '.jpg', undistorted_image_left)
+        #cv2.imwrite(folder_image_2 + filename +'.jpg', undistorted_image_right)
 
         cv2.namedWindow("Image 1", cv2.WINDOW_NORMAL)
         cv2.namedWindow("Image 2", cv2.WINDOW_NORMAL)
@@ -101,11 +110,11 @@ class CameraPublisher(Node):
 
         cv2.waitKey(1)  # Display images for a short period of time
 
-        pc_as_numpy_array = np.array(ros2_numpy.point_cloud2.point_cloud2_to_array(osuter_msg)['xyz'] )
+        pc_as_numpy_array = np.array(ros2_numpy.point_cloud2.point_cloud2_to_array(ouster_msg)['xyz'] )
         pc_as_numpy_array = self.transformation(pc_as_numpy_array)
         point_cloud = o3d.geometry.PointCloud()
         point_cloud.points = o3d.utility.Vector3dVector(pc_as_numpy_array[:,:3])
-        o3d.io.write_point_cloud(folder_pc + filename + '.pcd', point_cloud, format='auto', write_ascii=False, compressed=False, print_progress=False)
+        #o3d.io.write_point_cloud(folder_pc + filename + '.pcd', point_cloud, format='auto', write_ascii=False, compressed=False, print_progress=False)
         # Close all OpenCV windows
 
        
